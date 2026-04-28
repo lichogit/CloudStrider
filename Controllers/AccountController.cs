@@ -24,7 +24,7 @@ namespace SneakerShop.Controllers
         [HttpGet]
         public IActionResult Register() => View(new RegisterViewModel());
 
-        // POST METHODS (Handles the form submissions) ---
+        // POST METHODS (Handles the form submissions)
         [HttpPost]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
@@ -95,33 +95,49 @@ namespace SneakerShop.Controllers
 
         public async Task<IActionResult> ExternalLoginCallback(string returnUrl = null, string remoteError = null)
         {
-            if (remoteError != null) return RedirectToAction("Login");
+            if (remoteError != null) 
+            {
+                ModelState.AddModelError(string.Empty, $"Error from external provider: {remoteError}");
+                return View("Login");
+            }
             
             var info = await _signInManager.GetExternalLoginInfoAsync();
-            if (info == null) return RedirectToAction("Login");
+            if (info == null) 
+            {
+                
+                return RedirectToAction("Login"); 
+            }
 
+            // Try to sign in normally (if they've used Google here before)
             var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
             if (result.Succeeded) return RedirectToLocal(returnUrl);
 
+            // If we get here, they haven't used Google on our site before.
             var email = info.Principal.FindFirstValue(ClaimTypes.Email);
-            var firstName = info.Principal.FindFirstValue(ClaimTypes.GivenName) ?? "";
-            var lastName = info.Principal.FindFirstValue(ClaimTypes.Surname) ?? "";
+            var firstName = info.Principal.FindFirstValue(ClaimTypes.GivenName) ?? "New";
+            var lastName = info.Principal.FindFirstValue(ClaimTypes.Surname) ?? "User";
 
             if (email != null)
             {
-                var user = new ApplicationUser { UserName = email, Email = email, FirstName = firstName, LastName = lastName };
-                var createResult = await _userManager.CreateAsync(user);
+                // CHECK: Does a local account with this email already exist?
+                var user = await _userManager.FindByEmailAsync(email);
                 
-                if (createResult.Succeeded)
+                if (user == null)
                 {
-                    createResult = await _userManager.AddLoginAsync(user, info);
-                    if (createResult.Succeeded)
-                    {
-                        await _signInManager.SignInAsync(user, isPersistent: false);
-                        return RedirectToLocal(returnUrl);
-                    }
+                    // No account exists, create a brand new one
+                    user = new ApplicationUser { UserName = email, Email = email, FirstName = firstName, LastName = lastName };
+                    var createResult = await _userManager.CreateAsync(user);
+                    if (!createResult.Succeeded) return RedirectToAction("Login"); // Fallback
                 }
+
+                // Link the Google ID to the user (whether new or existing)
+                await _userManager.AddLoginAsync(user, info);
+                
+                // Sign them in
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                return RedirectToLocal(returnUrl);
             }
+            
             return RedirectToAction("Login");
         }
 

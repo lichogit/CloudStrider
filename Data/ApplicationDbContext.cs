@@ -4,7 +4,7 @@ using SneakerShop.Models;
 
 namespace SneakerShop.Data
 {
-    // THIS IS THE CRITICAL LINE: It must inherit from IdentityDbContext, NOT DbContext
+    //  inherit from IdentityDbContext
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser> 
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }

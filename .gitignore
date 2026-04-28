@@ -24,3 +24,5 @@
 Thumbs.db
 
 appsettings.Development.json
+# Node.js
+node_modules/

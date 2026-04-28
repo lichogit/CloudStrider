@@ -42,7 +42,7 @@ namespace SneakerShop.Controllers
                 // Add the new shoe to the database blueprint
                 _context.Products.Add(product);
                 
-                // Save the changes directly to SQL Server!
+                // Save the changes directly to SQL Server
                 await _context.SaveChangesAsync();
                 
                 // Send the admin back to the dashboard

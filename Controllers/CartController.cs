@@ -10,6 +10,7 @@ namespace SneakerShop.Controllers
         private readonly ApplicationDbContext _context;
         public CartController(ApplicationDbContext context) => _context = context;
 
+// a session-based cart that stores a list of CartItem objects, which include the product, quantity, and size. 
         public IActionResult Index()
         {
             var cart = HttpContext.Session.Get<List<CartItem>>("Cart") ?? new List<CartItem>();
@@ -53,7 +54,7 @@ public IActionResult RemoveFromCart(int id, string size)
                 cart.Remove(itemToRemove);
                 HttpContext.Session.Set("Cart", cart);
                 
-                // Optional: Show a toast notification that it was removed
+                //  Show a toast notification that it was removed
                 TempData["ToastMessage"] = $"{itemToRemove.Product.Name} was removed from your cart.";
                 TempData.Keep("ToastMessage");
             }

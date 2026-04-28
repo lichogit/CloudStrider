@@ -12,7 +12,7 @@ namespace SneakerShop.Controllers
         // UPDATED: The Home Page now fetches 4 "Top Sellers"
         public async Task<IActionResult> Index()
         {
-            // We'll take 4 of the more premium/expensive sneakers as top sellers
+            
             var topSellers = await _context.Products
                 .OrderByDescending(p => p.Price)
                 .Take(4)
@@ -21,7 +21,7 @@ namespace SneakerShop.Controllers
             return View(topSellers);
         }
 
-        // UPDATED: The Catalog Page now handles search and price filtering
+        // The Catalog Page  handles search and price filtering
         public async Task<IActionResult> Shop(string searchString, decimal? minPrice, decimal? maxPrice)
         {
             

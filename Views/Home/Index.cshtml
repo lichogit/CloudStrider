@@ -1,31 +1,171 @@
-﻿@model IEnumerable<SneakerShop.Models.Product>
-@{ ViewData["Title"] = "Home"; }
+@model IEnumerable<SneakerShop.Models.Product>
+@{ ViewData["Title"] = "Home"; ViewData["FullWidth"] = true; }
 
-<div class="text-center py-5 mt-5">
-    <h1 class="display-3 fw-bolder mb-3 text-uppercase">Walk on clouds</h1>
-    <p class="lead text-muted mb-5 w-50 mx-auto">Elevate your daily rotation with our carefully curated selection of premium sneakers. Minimal design, maximum impact.</p>
-    <a asp-controller="Home" asp-action="Shop" class="btn btn-dark btn-lg">Shop The Collection</a>
-</div>
+<!-- ===== SNEAKER DECONSTRUCTION SCROLL ANIMATION ===== -->
+<section class="sneaker-deconstruction" id="sneaker-deconstruction">
+    <div class="deconstruct-pin" id="deconstruct-pin">
 
-<div class="container mt-5 pt-5 border-top">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold text-uppercase mb-0">Top Sellers</h3>
-        <a asp-controller="Home" asp-action="Shop" class="text-dark text-decoration-none text-uppercase small fw-bold">View All &rarr;</a>
+        <!-- Three.js particle canvas -->
+        <canvas id="three-canvas"></canvas>
+
+        <!-- Loading overlay (shown during frame extraction) -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-text">Loading Experience</div>
+            <div class="loading-bar-track">
+                <div class="loading-bar-fill" id="loading-progress"></div>
+            </div>
+            <div class="loading-pct" id="loading-pct">0%</div>
+        </div>
+
+        <!-- Video canvas (renders extracted frames) -->
+        <canvas id="video-canvas"></canvas>
+
+        <!-- Video vignette overlay -->
+        <div class="video-vignette"></div>
+
+        <!-- Hidden video (used only for frame extraction) -->
+        <video id="sneaker-video"
+               src="/videos/whitecement2.mp4"
+               muted
+               playsinline
+               preload="auto"
+               crossorigin="anonymous"
+               disablepictureinpicture>
+        </video>
+
+
+
+        <!-- ===== STAGE 1: THE ICON ===== -->
+        <div class="stage-overlay pos-center" id="stage-1">
+            <div class="stage-content">
+                <div class="stage-line"></div>
+                <span class="stage-number">01 &mdash; THE ICON</span>
+                <h2 class="stage-title">CRAFTED TO<br>PERFECTION</h2>
+                <p class="stage-desc">
+                    A legend reimagined. Every curve, every stitch, every material
+                    chosen with obsessive precision to create the ultimate silhouette.
+                </p>
+            </div>
+        </div>
+
+        <!-- ===== STAGE 2: THE UPPER ===== -->
+        <div class="stage-overlay pos-right" id="stage-2">
+            <div class="stage-content">
+                <div class="stage-line"></div>
+                <span class="stage-number">02 &mdash; THE UPPER</span>
+                <h2 class="stage-title">PREMIUM<br>MATERIALS</h2>
+                <p class="stage-desc">
+                    Full-grain leather meets breathable mesh construction.
+                    Engineered for durability, designed for all-day comfort
+                    that moves with you.
+                </p>
+            </div>
+        </div>
+
+        <!-- ===== STAGE 3: CUSHIONING ===== -->
+        <div class="stage-overlay pos-left" id="stage-3">
+            <div class="stage-content">
+                <div class="stage-line"></div>
+                <span class="stage-number">03 &mdash; CUSHIONING</span>
+                <h2 class="stage-title">WALK ON<br>CLOUDS</h2>
+                <p class="stage-desc">
+                    Advanced foam midsole technology absorbs every impact
+                    and returns pure energy. Responsive cushioning that
+                    makes each step feel effortless.
+                </p>
+            </div>
+        </div>
+
+        <!-- ===== STAGE 4: SUPPORT ===== -->
+        <div class="stage-overlay pos-right" id="stage-4">
+            <div class="stage-content">
+                <div class="stage-line"></div>
+                <span class="stage-number">04 &mdash; STRUCTURAL INTEGRITY</span>
+                <h2 class="stage-title">BUILT FOR<br>THE JOURNEY</h2>
+                <p class="stage-desc">
+                    Strategic reinforcements and wing overlays lock your foot
+                    in place. Lateral support meets iconic design — stability
+                    without compromise.
+                </p>
+            </div>
+        </div>
+
+        <!-- ===== STAGE 5: THE OUTSOLE ===== -->
+        <div class="stage-overlay pos-left" id="stage-5">
+            <div class="stage-content">
+                <div class="stage-line"></div>
+                <span class="stage-number">05 &mdash; THE OUTSOLE</span>
+                <h2 class="stage-title">GRIP MEETS<br>GROUND</h2>
+                <p class="stage-desc">
+                    High-traction rubber compound with herringbone pattern
+                    grips any surface. Where performance engineering makes
+                    contact with the real world.
+                </p>
+            </div>
+        </div>
+
+        <!-- ===== STAGE 6: FINALE ===== -->
+        <div class="stage-overlay pos-center" id="stage-6">
+            <div class="stage-content">
+                <div class="stage-line"></div>
+                <span class="stage-number">06 &mdash; THE WHOLE PICTURE</span>
+                <h2 class="stage-title">EVERY DETAIL<br>MATTERS</h2>
+                <p class="stage-desc">
+                    Deconstructed. Perfected. Rebuilt. From sole to lace,
+                    every component exists for a reason. This isn't just a sneaker
+                    — it's engineering meets art.
+                </p>
+            </div>
+        </div>
+
+        <!-- Scroll indicator -->
+        <div class="scroll-indicator" id="scroll-indicator">
+            <span>SCROLL TO EXPLORE</span>
+            <div class="scroll-arrow"></div>
+        </div>
+
     </div>
+</section>
 
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
-        @foreach (var item in Model)
-        {
-            <div class="col">
-                <div class="card h-100 border-0 shadow-sm">
-                    <img src="@item.ImageUrl" class="card-img-top" alt="@item.Name" style="border-radius: 0; height: 200px; object-fit: cover;">
-                    <div class="card-body text-center p-3">
-                        <h6 class="card-title fw-bold mb-1">@item.Name</h6>
-                        <p class="card-text fw-bold fs-5 mb-3">$@item.Price.ToString("0.00")</p>
-                        <a asp-controller="Home" asp-action="Details" asp-route-id="@item.Id" class="btn btn-dark w-100 rounded-0 text-uppercase fw-bold">View Details</a>
+<!-- ===== TOP SELLERS ===== -->
+<div class="top-sellers-section">
+    <div class="container pt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-uppercase mb-0">Top Sellers</h3>
+            <a asp-controller="Home" asp-action="Shop" class="text-dark text-decoration-none text-uppercase small fw-bold">View All &rarr;</a>
+        </div>
+
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+            @foreach (var item in Model)
+            {
+                <div class="col">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <img src="@item.ImageUrl" class="card-img-top" alt="@item.Name" style="border-radius: 0; height: 200px; object-fit: cover;">
+                        <div class="card-body text-center p-3">
+                            <h6 class="card-title fw-bold mb-1">@item.Name</h6>
+                            <p class="card-text fw-bold fs-5 mb-3">$@item.Price.ToString("0.00")</p>
+                            <a asp-controller="Home" asp-action="Details" asp-route-id="@item.Id" class="btn btn-dark w-100 rounded-0 text-uppercase fw-bold">View Details</a>
+                        </div>
                     </div>
                 </div>
-            </div>
-        }
+            }
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <!-- Deconstruction animation styles -->
+    <link rel="stylesheet" href="~/css/deconstruct.css" />
+
+    <!-- Three.js (lightweight r128) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+            integrity="sha512-dLRnLzJxWIjOBCJYSPzmAl1lZ79IExcizjR4rI/IVn4PqkLOaijkkMIVKPqJEO7iBQC1cTO3ED5gHSEGMb3vQ=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- GSAP + ScrollTrigger -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+    <!-- Our scroll animation -->
+    <script src="~/js/deconstruct.js"></script>
+}
