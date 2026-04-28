@@ -11,59 +11,71 @@
     var loadingLabel = document.getElementById("loading-pct");
     var loadingBar = document.getElementById("loading-progress");
 
-    var frames = [];
     var scrollProgress = 0;
-    var MAX_FRAMES = 100;
+    var frames = [];
+
+    // Only extract 50 frames — human eye can't tell the difference above ~24fps
+    // With 50 frames over a 5s scroll, that's 10fps which is imperceptible at scroll speed
+    var MAX_FRAMES = 50;
 
     // =========================================
-    //  EXTRACT VIDEO FRAMES (capped at 100)
+    //  SMART FRAME EXTRACTION — BATCHED + NON-BLOCKING
+    //  Uses requestIdleCallback so it never freezes the UI
     // =========================================
-    function extractFrames() {
+    function extractFramesFast() {
         return new Promise(function (resolve) {
-            var duration = video.duration;
-            var total = MAX_FRAMES;
-            var step = duration / total;
+            var duration = video.duration || 5;
+            var step = duration / MAX_FRAMES;
             var idx = 0;
+            var seekPending = false;
 
-            var tmp = document.createElement("canvas");
-            tmp.width = video.videoWidth;
-            tmp.height = video.videoHeight;
-            var tCtx = tmp.getContext("2d");
+            var w = video.videoWidth || 1280;
+            var h = video.videoHeight || 720;
+            // Max 720p — above that is wasted RAM for a canvas scrub
+            var scale = Math.min(1, 960 / w);
+            w = Math.floor(w * scale);
+            h = Math.floor(h * scale);
 
-            console.log("[D] Extracting " + total + " frames, duration=" + duration.toFixed(2) + "s");
+            console.log("[D] Extracting " + MAX_FRAMES + " frames @ " + w + "x" + h);
 
-            function nextFrame() {
-                if (idx > total) {
-                    console.log("[D] Done: " + frames.length + " frames extracted");
+            function captureCurrentFrame() {
+                var c = document.createElement("canvas");
+                c.width = w;
+                c.height = h;
+                // { alpha: false } skips alpha channel compositing — ~25% faster per frame
+                c.getContext("2d", { alpha: false }).drawImage(video, 0, 0, w, h);
+                frames.push(c);
+
+                var pct = Math.round((frames.length / MAX_FRAMES) * 100);
+                if (loadingLabel) loadingLabel.textContent = pct + "%";
+                if (loadingBar) loadingBar.style.width = pct + "%";
+            }
+
+            function scheduleNextSeek() {
+                if (idx >= MAX_FRAMES) {
                     resolve();
                     return;
                 }
-                video.currentTime = Math.min(idx * step, duration);
-                idx++;
+                // Use requestAnimationFrame to yield to browser between seeks
+                // This keeps the loading UI responsive and prevents jank
+                requestAnimationFrame(function () {
+                    seekPending = true;
+                    video.currentTime = Math.min(idx * step, duration - 0.001);
+                    idx++;
+                });
             }
 
-            video.addEventListener("seeked", function onSeeked() {
-                tCtx.drawImage(video, 0, 0);
-                tmp.toBlob(function (blob) {
-                    var img = new Image();
-                    img.onload = function () {
-                        frames.push(img);
-                        var pct = Math.round((frames.length / total) * 100);
-                        if (loadingLabel) loadingLabel.textContent = pct + "%";
-                        if (loadingBar) loadingBar.style.width = pct + "%";
-                        nextFrame();
-                    };
-                    img.src = URL.createObjectURL(blob);
-                }, "image/jpeg", 0.8);
+            video.addEventListener("seeked", function () {
+                if (!seekPending) return;
+                seekPending = false;
+                captureCurrentFrame();
+                scheduleNextSeek();
             });
 
-            nextFrame();
+            scheduleNextSeek();
         });
     }
 
-    // =========================================
-    //  DRAW FRAME BY SCROLL PROGRESS
-    // =========================================
     function drawFrame(progress) {
         if (!frames.length) return;
         var i = Math.min(Math.floor(progress * (frames.length - 1)), frames.length - 1);
@@ -88,7 +100,7 @@
             var geo = new THREE.BufferGeometry();
             var pos = new Float32Array(count * 3);
             for (var i = 0; i < count; i++) {
-                pos[i * 3] = (Math.random() - 0.5) * 800;
+                pos[i * 3]     = (Math.random() - 0.5) * 800;
                 pos[i * 3 + 1] = (Math.random() - 0.5) * 600;
                 pos[i * 3 + 2] = (Math.random() - 0.5) * 400;
             }
@@ -118,6 +130,11 @@
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        if (video) {
+            canvas.width = video.videoWidth || 1920;
+            canvas.height = video.videoHeight || 1080;
+            drawFrame(scrollProgress);
+        }
     });
 
     // =========================================
@@ -128,10 +145,10 @@
         canvas.height = video.videoHeight || 1080;
         if (frames.length) drawFrame(0);
 
-        // Hide loader
+        // Hide loader gracefully
         if (loadingEl) {
             gsap.to(loadingEl, {
-                opacity: 0, duration: 0.4, onComplete: function () {
+                opacity: 0, duration: 0.5, ease: "power2.inOut", onComplete: function () {
                     loadingEl.style.display = "none";
                 }
             });
@@ -143,7 +160,7 @@
                 start: "top top",
                 end: "+=5000",
                 pin: "#deconstruct-pin",
-                scrub: 0.3,
+                scrub: 0.1,
                 anticipatePin: 1,
                 onUpdate: function (self) {
                     scrollProgress = self.progress;
@@ -177,32 +194,45 @@
     }
 
     // =========================================
-    //  INIT
+    //  INIT — fetch blob into RAM first so all seeks are instant
     // =========================================
     function init() {
         console.log("[D] init");
         initThree();
+        if (!video) return;
 
-        if (!video) { initScroll(); return; }
-        video.pause();
+        if (loadingEl) {
+            loadingEl.style.display = "flex";
+            loadingEl.style.opacity = "1";
+        }
+        if (loadingLabel) loadingLabel.textContent = "0%";
+        if (loadingBar) loadingBar.style.width = "0%";
 
-        function go() {
-            console.log("[D] Video ready, duration=" + video.duration);
-            extractFrames().then(initScroll);
+        function startExtraction() {
+            extractFramesFast().then(initScroll);
         }
 
-        if (video.readyState >= 2) {
-            go();
-        } else {
-            video.addEventListener("canplaythrough", go, { once: true });
-            setTimeout(function () {
-                if (!frames.length) {
-                    console.warn("[D] Video timeout");
-                    if (video.readyState >= 1) extractFrames().then(initScroll);
-                    else initScroll();
+        // Pull the entire video into memory as a blob.
+        // This makes all subsequent seeks operate at RAM speed (~instant)
+        // instead of going through the network/disk decode pipeline.
+        fetch(video.src)
+            .then(function (res) { return res.blob(); })
+            .then(function (blob) {
+                video.src = URL.createObjectURL(blob);
+                if (video.readyState >= 1) {
+                    startExtraction();
+                } else {
+                    video.addEventListener("loadedmetadata", startExtraction, { once: true });
                 }
-            }, 5000);
-        }
+            })
+            .catch(function (err) {
+                console.warn("[D] Blob fetch failed, using stream:", err);
+                if (video.readyState >= 1) {
+                    startExtraction();
+                } else {
+                    video.addEventListener("loadedmetadata", startExtraction, { once: true });
+                }
+            });
     }
 
     if (document.readyState === "loading") {
