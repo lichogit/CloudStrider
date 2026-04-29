@@ -16,6 +16,7 @@ PROJECT_GUIDELINES.md
 
 # Api Keys
 .env
+
 # Local databases 
 *.mdf
 *.ldf

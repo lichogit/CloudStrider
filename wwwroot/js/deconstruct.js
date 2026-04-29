@@ -14,8 +14,7 @@
     var scrollProgress = 0;
     var frames = [];
 
-    // Only extract 50 frames — human eye can't tell the difference above ~24fps
-    // With 50 frames over a 5s scroll, that's 10fps which is imperceptible at scroll speed
+
     var MAX_FRAMES = 50;
 
     // =========================================
@@ -29,10 +28,10 @@
             var idx = 0;
             var seekPending = false;
 
-            var w = video.videoWidth || 1280;
-            var h = video.videoHeight || 720;
-            // Max 720p — above that is wasted RAM for a canvas scrub
-            var scale = Math.min(1, 960 / w);
+            var w = video.videoWidth || 1920;
+            var h = video.videoHeight || 1080;
+            //1080p quality
+            var scale = Math.min(1, 1920 / w);
             w = Math.floor(w * scale);
             h = Math.floor(h * scale);
 
@@ -100,7 +99,7 @@
             var geo = new THREE.BufferGeometry();
             var pos = new Float32Array(count * 3);
             for (var i = 0; i < count; i++) {
-                pos[i * 3]     = (Math.random() - 0.5) * 800;
+                pos[i * 3] = (Math.random() - 0.5) * 800;
                 pos[i * 3 + 1] = (Math.random() - 0.5) * 600;
                 pos[i * 3 + 2] = (Math.random() - 0.5) * 400;
             }
@@ -145,7 +144,7 @@
         canvas.height = video.videoHeight || 1080;
         if (frames.length) drawFrame(0);
 
-        // Hide loader gracefully
+        // Hide loader 
         if (loadingEl) {
             gsap.to(loadingEl, {
                 opacity: 0, duration: 0.5, ease: "power2.inOut", onComplete: function () {
